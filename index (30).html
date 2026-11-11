@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘 뭐 먹지? | 식권 발매기</title>
+<meta name="description" content="메뉴 고르기 귀찮을 때, 식권 발매기에서 오늘 먹을 메뉴를 랜덤으로 뽑아 보세요.">
+<meta property="og:title" content="오늘 뭐 먹지? | 식권 발매기">
+<meta property="og:description" content="버튼 한 번으로 오늘 먹을 메뉴를 뽑아 드려요.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎫</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall:#dfe7e2;
+    --body:#1f4d3f;
+    --body-dark:#163a2f;
+    --screen:#0d1a15;
+    --amber:#ffb21a;
+    --paper:#ffe3e6;
+    --ink:#1b1b1b;
+    --mute:#5f6b66;
+    --emoji:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:'IBM Plex Sans KR',sans-serif;color:var(--ink);background:var(--wall);
+    min-height:100vh;display:flex;justify-content:center;padding:28px 16px 56px;
+  }
+  .wrap{width:100%;max-width:420px}
+  button,input,select{font:inherit;color:inherit}
+  button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+
+  .title{font-family:'Do Hyeon',sans-serif;font-size:44px;line-height:1;text-align:center;letter-spacing:-.5px}
+  .sub{text-align:center;color:var(--mute);font-size:14px;margin:8px 0 22px}
+
+  /* 식권 발매기 본체 */
+  .machine{
+    background:var(--body);border-radius:22px 22px 10px 10px;padding:18px 18px 0;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -6px 0 var(--body-dark),0 14px 24px -12px rgba(22,58,47,.55);
+    position:relative;z-index:2;
+  }
+  .plate{display:flex;justify-content:space-between;align-items:center;color:#cfe3da;font-size:12px;margin-bottom:10px;padding:0 4px}
+  .plate b{font-family:'Do Hyeon',sans-serif;font-weight:400;font-size:17px;color:#fff;letter-spacing:.5px}
+
+  .screen{
+    background:var(--screen);border-radius:10px;height:104px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;border:3px solid #0a130f;padding:0 10px;
+    box-shadow:inset 0 0 18px rgba(255,178,26,.08);overflow:hidden;
+  }
+  .screen .big{font-family:'Do Hyeon',sans-serif;font-size:34px;color:var(--amber);
+    text-shadow:0 0 10px rgba(255,178,26,.45);line-height:1.1;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .screen .small{font-size:12px;color:#8a7a4f;margin-top:4px}
+  .screen.idle .big{font-size:22px;opacity:.85}
+
+  .keys{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:14px 0}
+  .key{
+    background:#f4f1e6;border:none;border-radius:8px;padding:9px 2px 8px;font-size:13px;font-weight:500;cursor:pointer;
+    box-shadow:0 3px 0 #b9b5a5;transition:transform .08s,box-shadow .08s;white-space:nowrap;
+  }
+  .key::before{content:"";display:block;width:8px;height:8px;border-radius:50%;margin:0 auto 5px;background:#c9c4b2}
+  .key[aria-pressed="true"]::before{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+  .key[aria-pressed="false"]{color:#8d8a7e}
+  .key:active{transform:translateY(2px);box-shadow:0 1px 0 #b9b5a5}
+  .key:disabled{cursor:default}
+
+  .go{
+    width:100%;border:none;border-radius:12px;padding:15px 10px;cursor:pointer;
+    background:var(--amber);color:var(--ink);font-family:'Do Hyeon',sans-serif;font-size:26px;
+    box-shadow:0 5px 0 #c4850a;transition:transform .08s,box-shadow .08s;
+  }
+  .go:active{transform:translateY(4px);box-shadow:0 1px 0 #c4850a}
+  .go:disabled{background:#8e9a93;box-shadow:0 5px 0 #6b7671;cursor:default;transform:none}
+  .hint{color:#cfe3da;font-size:12px;text-align:center;min-height:18px;margin:9px 0 12px}
+
+  .slotbar{height:16px;margin:0 -18px;background:var(--body-dark);border-radius:0 0 10px 10px;position:relative}
+  .slotbar::after{content:"";position:absolute;left:22%;right:22%;top:5px;height:5px;border-radius:3px;background:#06110d}
+
+  /* 출력된 식권 */
+  .tray{position:relative;z-index:1;margin:-4px 26px 0;overflow:hidden;min-height:8px}
+  .ticket{
+    background:linear-gradient(var(--paper),var(--paper)) top/100% calc(100% - 6px) no-repeat;
+    padding:18px 20px 22px;position:relative;
+    transform:translateY(-105%);transition:transform .7s cubic-bezier(.2,.8,.25,1);
+    -webkit-mask:radial-gradient(circle 6px at 0 58%,transparent 98%,#000) left/51% 100% no-repeat,
+                 radial-gradient(circle 6px at 100% 58%,transparent 98%,#000) right/51% 100% no-repeat;
+            mask:radial-gradient(circle 6px at 0 58%,transparent 98%,#000) left/51% 100% no-repeat,
+                 radial-gradient(circle 6px at 100% 58%,transparent 98%,#000) right/51% 100% no-repeat;
+  }
+  .ticket::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;
+    background:linear-gradient(135deg,var(--paper) 50%,transparent 0) 0 0/12px 12px repeat-x,
+               linear-gradient(-135deg,var(--paper) 50%,transparent 0) 0 0/12px 12px repeat-x}
+  .ticket.out{transform:translateY(0)}
+  .ticket .top{display:flex;justify-content:space-between;font-size:12px;color:#8b5a62}
+  .ticket .label{font-family:'Do Hyeon',sans-serif;font-size:16px;color:#b0424f;letter-spacing:2px;text-align:center;margin-top:10px}
+  .ticket .pic{font-family:var(--emoji);font-size:64px;line-height:1;text-align:center;margin-top:12px}
+  .ticket.out .pic{animation:land .45s .35s both cubic-bezier(.3,1.6,.5,1)}
+  @keyframes land{from{transform:scale(.4) rotate(-12deg);opacity:0}to{transform:none;opacity:1}}
+  .ticket .menu{font-family:'Do Hyeon',sans-serif;font-size:44px;text-align:center;line-height:1.15;margin-top:4px;word-break:keep-all;overflow-wrap:anywhere}
+  .ticket .cat{text-align:center;font-size:13px;color:#8b5a62;margin-top:2px}
+  .ticket .cut{border-top:2px dashed #e7a9b1;margin:16px -20px 12px}
+  .acts{display:flex;gap:8px}
+  .acts button{flex:1;border:1.5px solid #e2a0a9;background:transparent;border-radius:8px;padding:9px 6px;font-size:13px;cursor:pointer;color:#7a3a44}
+  .acts button:hover{background:#ffd3d8}
+  .acts.small{margin-top:8px}
+  .acts.small a,.acts.small button{
+    flex:1;text-align:center;font-size:12px;color:#8b5a62;border:none;background:none;padding:6px 4px;cursor:pointer;
+    text-decoration:underline;text-underline-offset:3px
+  }
+  .acts.small button:hover{background:none;color:#7a3a44}
+
+  /* 아래 영역 */
+  .log{margin-top:30px}
+  .log h2{font-size:14px;font-weight:700;margin-bottom:9px;display:flex;justify-content:space-between;align-items:baseline}
+  .log h2 span{font-weight:400;color:var(--mute);font-size:12px}
+  .stubs{display:flex;flex-wrap:wrap;gap:6px}
+  .stub{background:#fff;border-left:3px dashed #e7a9b1;border-radius:4px;padding:5px 10px;font-size:13px}
+  .stub i{font-style:normal;font-family:var(--emoji);margin-right:4px}
+  .stub.x{background:transparent;border:1.5px solid #b9c4be;color:var(--mute);cursor:pointer}
+  .stub.x:hover{border-color:var(--body);color:var(--body)}
+  .stub.x s{text-decoration-thickness:1px}
+  .none{font-size:13px;color:var(--mute)}
+  .linkbtn{border:none;background:none;color:var(--mute);font-size:12px;text-decoration:underline;cursor:pointer}
+
+  /* 내 메뉴 */
+  .mine{margin-top:30px;background:#f4f1e6;border-radius:14px;padding:16px}
+  .mine h2{font-size:15px;margin-bottom:4px}
+  .mine p.desc{font-size:12px;color:var(--mute);margin-bottom:12px}
+  .addrow{display:flex;gap:6px}
+  .addrow input{flex:1;min-width:0;border:1.5px solid #cfc9b6;border-radius:8px;padding:9px 10px;background:#fff;font-size:14px}
+  .addrow select{border:1.5px solid #cfc9b6;border-radius:8px;padding:9px 6px;background:#fff;font-size:13px}
+  .addrow button{border:none;border-radius:8px;padding:0 14px;background:var(--body);color:#fff;font-size:14px;cursor:pointer;white-space:nowrap}
+  .addrow button:hover{background:var(--body-dark)}
+  .msg{font-size:12px;min-height:18px;margin:6px 0 8px;color:var(--mute)}
+  .msg.err{color:#b0424f}
+  .chipdel{display:inline-flex;align-items:center;gap:4px;background:#fff;border-radius:999px;padding:4px 6px 4px 11px;font-size:13px}
+  .chipdel small{color:var(--mute);font-size:11px}
+  .chipdel button{border:none;background:#ece7d8;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:12px;line-height:20px;color:var(--mute)}
+  .chipdel button:hover{background:#b0424f;color:#fff}
+
+  footer{margin-top:34px;text-align:center;font-size:12px;color:var(--mute)}
+
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+  @media (max-width:360px){
+    .keys{grid-template-columns:repeat(4,1fr)}
+    .title{font-size:38px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .ticket{transition:none}
+    .ticket.out .pic{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="title">오늘 뭐 먹지?</h1>
+  <p class="sub">먹고 싶은 종류를 켜고, 식권을 뽑으세요</p>
+
+  <section class="machine" aria-label="메뉴 뽑기 기계">
+    <div class="plate"><b>식권 발매기</b><span id="count"></span></div>
+
+    <div class="screen idle" id="screen" aria-hidden="true">
+      <div class="big" id="sBig">버튼을 눌러 주세요</div>
+      <div class="small" id="sSmall"></div>
+    </div>
+
+    <div class="keys" id="keys" role="group" aria-label="음식 종류 선택"></div>
+
+    <button class="go" id="go">식권 뽑기</button>
+    <p class="hint" id="hint"></p>
+    <div class="slotbar"></div>
+  </section>
+
+  <div class="tray">
+    <article class="ticket" id="ticket" hidden>
+      <div class="top"><span id="tNo"></span><span id="tTime"></span></div>
+      <div class="label">식 권</div>
+      <div class="pic" id="tPic" aria-hidden="true"></div>
+      <div class="menu" id="tMenu"></div>
+      <div class="cat" id="tCat"></div>
+      <div class="cut"></div>
+      <div class="acts">
+        <button id="again">한 번 더</button>
+        <button id="skip">이건 빼고 다시</button>
+      </div>
+      <div class="acts small">
+        <a id="map" href="#" target="_blank" rel="noopener">근처 맛집 찾기</a>
+        <button id="copy">결과 복사</button>
+      </div>
+    </article>
+  </div>
+  <p class="sr" aria-live="polite" id="live"></p>
+
+  <section class="log">
+    <h2>오늘 뽑은 식권 <span>최근 10장</span></h2>
+    <div class="stubs" id="hist"></div>
+  </section>
+
+  <section class="log">
+    <h2>오늘은 안 먹을 메뉴 <button class="linkbtn" id="reset" hidden>모두 되돌리기</button></h2>
+    <div class="stubs" id="excl"></div>
+  </section>
+
+  <section class="mine" aria-labelledby="mineTitle">
+    <h2 id="mineTitle">내 메뉴 추가</h2>
+    <p class="desc">목록에 없는 메뉴를 넣으면 뽑기 후보에 들어가요. 이 브라우저에만 저장돼요.</p>
+    <form class="addrow" id="addForm">
+      <label class="sr" for="newName">메뉴 이름</label>
+      <input id="newName" maxlength="20" placeholder="예: 엄마표 김치볶음밥" autocomplete="off">
+      <label class="sr" for="newCat">종류</label>
+      <select id="newCat"></select>
+      <button type="submit">추가</button>
+    </form>
+    <p class="msg" id="msg" aria-live="polite"></p>
+    <div class="stubs" id="mineList"></div>
+  </section>
+
+  <footer>기록과 내 메뉴는 이 기기 브라우저에만 저장돼요</footer>
+</div>
+
+<script>
+/* ===== 기본 메뉴 [이름, 그림] — 딱 맞는 이모지가 없는 메뉴는 가장 가까운 것으로 ===== */
+const BASE = {
+  "한식":[["김치찌개","🍲"],["된장찌개","🍲"],["순두부찌개","🍲"],["부대찌개","🍲"],["청국장","🍲"],["동태찌개","🐟"],["고추장찌개","🌶️"],
+    ["비빔밥","🍚"],["돌솥비빔밥","🍚"],["육회비빔밥","🥩"],["불고기","🥩"],["불고기 백반","🍱"],["제육볶음","🥘"],["오징어볶음","🦑"],
+    ["낙지볶음","🐙"],["쭈꾸미볶음","🐙"],["삼겹살","🥓"],["목살구이","🥓"],["돼지갈비","🍖"],["소갈비","🍖"],["LA갈비","🍖"],
+    ["떡갈비","🍖"],["닭갈비","🍗"],["갈비탕","🍖"],["설렁탕","🥣"],["곰탕","🥣"],["순댓국","🥣"],["돼지국밥","🥣"],["소머리국밥","🥣"],
+    ["뼈해장국","🦴"],["콩나물국밥","🥣"],["육개장","🌶️"],["삼계탕","🐔"],["추어탕","🥣"],["매운탕","🐟"],["김치찜","🍲"],
+    ["갈비찜","🍖"],["아귀찜","🐟"],["해물찜","🦐"],["닭볶음탕","🍗"],["감자탕","🥔"],["물냉면","🍜"],["비빔냉면","🍜"],["밀면","🍜"],
+    ["칼국수","🍜"],["수제비","🥣"],["잔치국수","🍜"],["비빔국수","🍜"],["콩국수","🍜"],["막국수","🍜"],["보쌈","🥬"],["쌈밥","🥬"],
+    ["백반","🍱"],["생선구이","🐟"],["고등어조림","🐟"],["갈치조림","🐟"],["김치볶음밥","🍳"],["낙곱새","🌶️"],["해물파전","🥞"],
+    ["김치전","🥞"],["두부김치","🥢"],["장어구이","🐟"],["육회","🥩"],["버섯전골","🍲"],["곱창전골","🍲"],["닭한마리","🐔"]],
+  "중식":[["짜장면","🍜"],["간짜장","🍜"],["쟁반짜장","🍜"],["짬뽕","🍜"],["굴짬뽕","🦪"],["짬뽕밥","🍚"],["탕수육","🍖"],["꿔바로우","🍖"],
+    ["중화 볶음밥","🍳"],["잡채밥","🍚"],["마파두부밥","🌶️"],["마라탕","🌶️"],["마라샹궈","🌶️"],["깐풍기","🍗"],["유린기","🍗"],
+    ["깐쇼새우","🍤"],["양장피","🥗"],["딤섬","🥟"],["군만두","🥟"],["울면","🍜"],["팔보채","🦐"],["고추잡채","🌶️"],["훠궈","🍲"],
+    ["우육면","🍜"],["동파육","🍖"],["토마토 계란볶음","🍅"]],
+  "일식":[["초밥","🍣"],["모둠회","🐟"],["연어덮밥","🍣"],["회덮밥","🐟"],["돈코츠 라멘","🍜"],["미소 라멘","🍜"],["쇼유 라멘","🍜"],
+    ["츠케멘","🍜"],["돈카츠","🍛"],["치즈돈카츠","🧀"],["히레카츠","🍛"],["규카츠","🥩"],["우동","🍜"],["카레우동","🍜"],["규동","🍚"],
+    ["가츠동","🍚"],["오야코동","🍚"],["일본식 카레","🍛"],["소바","🍜"],["냉모밀","🍜"],["오코노미야키","🥞"],["타코야키","🐙"],
+    ["텐동","🍤"],["튀김 정식","🍤"],["장어덮밥","🐟"],["스키야키","🍲"],["야키토리","🍢"],["함바그","🍖"],["나베","🍲"],["야키소바","🍜"]],
+  "양식":[["토마토 파스타","🍝"],["크림 파스타","🍝"],["로제 파스타","🍝"],["알리오 올리오","🍝"],["봉골레 파스타","🍝"],["라자냐","🍝"],
+    ["피자","🍕"],["햄버거","🍔"],["수제버거","🍔"],["스테이크","🥩"],["함박스테이크","🍖"],["리조또","🍚"],["샐러드","🥗"],
+    ["샌드위치","🥪"],["클럽 샌드위치","🥪"],["오므라이스","🍳"],["그라탕","🧀"],["필라프","🍳"],["바비큐 립","🍖"],["감바스","🦐"],
+    ["피시 앤 칩스","🐟"],["브런치 플레이트","🍳"],["프렌치토스트","🍞"],["핫도그","🌭"],["치킨 스테이크","🍗"],["뇨끼","🥔"],
+    ["수프와 빵","🥣"],["돈가스(경양식)","🍛"]],
+  "분식":[["떡볶이","🌶️"],["로제 떡볶이","🌶️"],["짜장 떡볶이","🌶️"],["라볶이","🍜"],["김밥","🍙"],["참치김밥","🍙"],["꼬마김밥","🍙"],
+    ["라면","🍜"],["치즈라면","🧀"],["순대","🌭"],["순대볶음","🌶️"],["튀김","🍤"],["쫄면","🍜"],["어묵","🍢"],["주먹밥","🍙"],
+    ["찐만두","🥟"],["비빔만두","🥟"],["떡꼬치","🍢"],["핫바","🍢"],["컵밥","🍚"]],
+  "아시안":[["쌀국수","🍜"],["분짜","🥢"],["분보후에","🍜"],["반쎄오","🥞"],["월남쌈","🥬"],["반미","🥖"],["팟타이","🍝"],["팟카파오","🍚"],
+    ["푸팟퐁커리","🦀"],["똠얌꿍","🦐"],["카오팟","🍳"],["쏨땀","🥗"],["나시고렝","🍳"],["미고렝","🍜"],["락사","🍜"],
+    ["하이난 치킨라이스","🍚"],["인도 커리","🍛"],["버터치킨 커리","🍛"],["탄두리 치킨","🍗"],["비리야니","🍚"],["타코","🌮"],
+    ["부리또","🌯"],["케밥","🥙"],["팔라펠","🧆"]],
+  "야식":[["후라이드 치킨","🍗"],["양념치킨","🍗"],["간장치킨","🍗"],["파닭","🍗"],["닭강정","🍗"],["족발","🍖"],["불족발","🌶️"],
+    ["곱창","🔥"],["막창","🔥"],["대창","🔥"],["닭발","🌶️"],["찜닭","🍗"],["양꼬치","🍢"],["닭꼬치","🍢"],["오돌뼈","🦴"],
+    ["닭똥집","🍗"],["골뱅이무침","🐚"],["육전","🥩"],["치즈볼","🧀"]],
+  "간편식":[["죽","🥣"],["전복죽","🥣"],["토스트","🍞"],["베이글","🥯"],["포케","🥗"],["컵라면","🍜"],["삼각김밥","🍙"],["도시락","🍱"],
+    ["요거트볼","🥣"],["군고구마","🍠"],["간장계란밥","🍳"],["유부초밥","🍣"],["팬케이크","🥞"],["와플","🧇"],["시리얼","🥣"],["또띠아 랩","🌯"]]
+};
+const MINE = "내 메뉴";
+const CATS = [...Object.keys(BASE), MINE];
+const DEFAULT_PIC = "🍽️";
+
+/* ===== 저장 (이 브라우저에만, 실패해도 동작) ===== */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const today = (() => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; })();
+
+let custom = store.get('mm.custom', []).filter(m => m && typeof m.n === 'string' && CATS.includes(m.c));
+let day = store.get('mm.day', null);
+if(!day || day.date !== today) day = { date: today, history: [], excluded: [], no: 0 };
+let on = new Set(store.get('mm.on', CATS).filter(c => CATS.includes(c)));
+let excluded = new Set(day.excluded);
+let current = null, busy = false;
+
+function save(){
+  day.excluded = [...excluded];
+  store.set('mm.day', day); store.set('mm.on', [...on]); store.set('mm.custom', custom);
+}
+
+/* ===== 메뉴 데이터 ===== */
+let MENU = {}, PIC = {}, CAT_OF = {};
+function buildMenu(){
+  MENU = {}; PIC = {}; CAT_OF = {};
+  CATS.forEach(c => MENU[c] = []);
+  Object.entries(BASE).forEach(([c, list]) => list.forEach(([n, e]) => { MENU[c].push(n); PIC[n] = e; CAT_OF[n] = c; }));
+  custom.forEach(m => { if(!CAT_OF[m.n]){ MENU[m.c].push(m.n); PIC[m.n] = DEFAULT_PIC; CAT_OF[m.n] = m.c; } });
+}
+const visibleCats = () => CATS.filter(c => MENU[c].length);
+function pool(){
+  const p = [];
+  visibleCats().forEach(c => { if(on.has(c)) MENU[c].forEach(n => { if(!excluded.has(n)) p.push({n, c}); }); });
+  return p;
+}
+
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; };
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ===== 화면 그리기 ===== */
+function renderKeys(){
+  const k = $('keys'); k.innerHTML = '';
+  const cats = visibleCats();
+  const allOn = cats.every(c => on.has(c));
+  const all = el('button', 'key', '전체');
+  all.setAttribute('aria-pressed', allOn);
+  all.onclick = () => { cats.forEach(c => on.add(c)); refresh(); };
+  k.appendChild(all);
+  cats.forEach(c => {
+    const b = el('button', 'key', c);
+    b.setAttribute('aria-pressed', on.has(c));
+    b.onclick = () => {
+      if(allOn){ on = new Set([c]); }            // 전체 상태에서 누르면 그 종류만
+      else if(on.has(c)){ on.delete(c); }
+      else { on.add(c); }
+      refresh();
+    };
+    k.appendChild(b);
+  });
+  k.querySelectorAll('button').forEach(b => b.disabled = busy);
+}
+
+function renderLists(){
+  const h = $('hist'); h.innerHTML = '';
+  if(!day.history.length) h.appendChild(el('span', 'none', '아직 뽑은 식권이 없어요'));
+  day.history.forEach(n => {
+    const s = el('span', 'stub'); const i = el('i', null, PIC[n] || DEFAULT_PIC); i.setAttribute('aria-hidden', 'true');
+    s.append(i, n); h.appendChild(s);
+  });
+
+  const x = $('excl'); x.innerHTML = '';
+  if(!excluded.size) x.appendChild(el('span', 'none', '빼둔 메뉴가 없어요'));
+  excluded.forEach(n => {
+    const b = el('button', 'stub x'); b.appendChild(el('s', null, n));
+    b.title = '눌러서 되돌리기'; b.setAttribute('aria-label', `${n} 되돌리기`);
+    b.onclick = () => { excluded.delete(n); refresh(); };
+    x.appendChild(b);
+  });
+  $('reset').hidden = excluded.size < 2;
+
+  const m = $('mineList'); m.innerHTML = '';
+  custom.forEach((item, idx) => {
+    const c = el('span', 'chipdel'); c.append(item.n, ' ');
+    c.appendChild(el('small', null, item.c));
+    const d = el('button', null, '✕'); d.setAttribute('aria-label', `${item.n} 삭제`);
+    d.onclick = () => {
+      custom.splice(idx, 1); excluded.delete(item.n);
+      buildMenu(); refresh(); showMsg(`'${item.n}'을(를) 지웠어요`);
+    };
+    c.appendChild(d); m.appendChild(c);
+  });
+}
+
+function refresh(){
+  renderKeys();
+  const n = pool().length;
+  const total = visibleCats().reduce((s, c) => s + MENU[c].length, 0);
+  $('count').textContent = `후보 ${n}개 / 전체 ${total}개`;
+  $('go').disabled = busy || n === 0;
+  const anyOn = visibleCats().some(c => on.has(c));
+  $('hint').textContent = !anyOn ? '종류를 하나 이상 켜 주세요'
+                        : n === 0 ? '켜진 종류의 메뉴를 모두 뺐어요. 아래에서 되돌릴 수 있어요'
+                        : visibleCats().every(c => on.has(c)) ? '종류 버튼을 누르면 그 종류만 골라요' : '';
+  renderLists(); save();
+}
+
+/* ===== 뽑기 ===== */
+function pick(p){
+  const cand = (current && p.length > 1) ? p.filter(m => m.n !== current.n) : p;   // 직전 메뉴 연속 방지
+  return cand[Math.floor(Math.random() * cand.length)];
+}
+
+function draw(){
+  const p = pool(); if(!p.length || busy) return;
+  busy = true; refresh();
+  const t = $('ticket'); t.classList.remove('out');
+  const final = pick(p);
+  $('screen').classList.remove('idle'); $('sSmall').textContent = '고르는 중';
+
+  const finish = () => {
+    $('sBig').textContent = final.n; $('sSmall').textContent = '식권이 나왔어요';
+    current = final; day.no++;
+    const d = new Date();
+    $('tNo').textContent = `No. ${String(day.no).padStart(3, '0')}`;
+    $('tTime').textContent = `${d.getMonth()+1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    $('tPic').textContent = PIC[final.n] || DEFAULT_PIC;
+    $('tMenu').textContent = final.n; $('tCat').textContent = final.c;
+    $('map').href = 'https://map.naver.com/p/search/' + encodeURIComponent(final.n.replace(/\(.*?\)/g, '').trim());
+    $('copy').textContent = '결과 복사';
+    t.hidden = false;
+    requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('out')));
+    $('live').textContent = `오늘의 메뉴는 ${final.n}`;
+    day.history.unshift(final.n); day.history = day.history.slice(0, 10);
+    busy = false; refresh();
+  };
+
+  if(reduce){ finish(); return; }
+  let delay = 40, elapsed = 0;
+  const tick = () => {
+    $('sBig').textContent = p[Math.floor(Math.random() * p.length)].n;
+    elapsed += delay; delay *= 1.1;
+    if(elapsed < 1700) setTimeout(tick, delay); else finish();
+  };
+  tick();
+}
+
+/* ===== 내 메뉴 추가 ===== */
+function showMsg(text, err){ const m = $('msg'); m.textContent = text; m.classList.toggle('err', !!err); }
+CATS.forEach(c => { const o = el('option', null, c); o.value = c; $('newCat').appendChild(o); });
+$('newCat').value = MINE;
+
+$('addForm').onsubmit = e => {
+  e.preventDefault();
+  const name = $('newName').value.replace(/\s+/g, ' ').trim();
+  const cat = $('newCat').value;
+  if(!name) return showMsg('메뉴 이름을 적어 주세요', true);
+  if(CAT_OF[name]) return showMsg(`'${name}'은(는) 이미 ${CAT_OF[name]}에 있어요`, true);
+  if(custom.length >= 100) return showMsg('내 메뉴는 100개까지 넣을 수 있어요', true);
+  custom.push({ n: name, c: cat }); on.add(cat);
+  buildMenu(); refresh();
+  $('newName').value = ''; $('newName').focus();
+  showMsg(`'${name}'을(를) ${cat}에 넣었어요`);
+};
+
+/* ===== 버튼 연결 ===== */
+$('go').onclick = draw;
+$('again').onclick = draw;
+$('skip').onclick = () => { if(current){ excluded.add(current.n); refresh(); draw(); } };
+$('reset').onclick = () => { excluded.clear(); refresh(); };
+$('copy').onclick = async () => {
+  if(!current) return;
+  const text = `오늘 메뉴는 ${current.n}! (식권 발매기로 뽑음)`;
+  try{ await navigator.clipboard.writeText(text); $('copy').textContent = '복사했어요'; }
+  catch(err){ $('copy').textContent = '이 화면에선 복사가 안 돼요'; }
+};
+
+buildMenu(); refresh();
+</script>
+</body>
+</html>
